@@ -13,7 +13,7 @@
             <!-- Start button -->
             <div class="d-flex">
               <v-btn
-                v-if="!started"
+                v-if="!started && !resultMessage"
                 @click="startTask"
                 class="my-5 mx-auto"
                 color="success"
@@ -71,7 +71,19 @@
                   <v-text-field
                     v-model="taskAnswer"
                     @keydown.enter="submitAnswer"
+                    :disabled="paused"
                   />
+                  <span
+                    v-if="taskOptions.showTasksCount"
+                    class="counter"
+                  >
+                    <span class="counter-incorrect">{{getIncorrectAnswersNum()}}</span>
+                    /
+                    <span class="counter-correct">{{getCorrectAnswersNum()}}</span>
+                    <span v-if="taskOptions.tasksLimit.isSet">
+                    / {{getTasksLeftNum()}}
+                    </span>
+                  </span>
                 </v-col>
               </v-row>
               <!-- Submit button -->
@@ -88,6 +100,7 @@
               <!-- Task controls -->
               <div class="d-flex justify-end">
                 <v-btn
+                  v-if="taskOptions.timer.isSet"
                   @click="processBreakButtonClick"
                   class="ma-1"
                   text
@@ -105,6 +118,28 @@
                   Stop
                 </v-btn>
               </div>
+            </div>
+            <!-- Result content -->
+            <div
+              v-if="resultMessage"
+              class="task"
+            >
+              <v-row>
+                <v-col cols="12">
+                  {{resultMessage}}
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12">
+                  <v-btn
+                    @click="startTask"
+                    small
+                    text
+                  >
+                    Restart
+                  </v-btn>
+                </v-col>
+              </v-row>
             </div>
           </v-card-text>
           <v-card-actions>
@@ -139,47 +174,13 @@
                   Options
                 </h4>
                 <br>
-                <p>
-                  Numbers used in tasks
-                </p>
-                <v-row class="ma-0 pa-0">
-                  <v-switch
-                    v-model="taskOptions.specificNumber.isSet"
-                    :disabled="started"
-                    class="ma-1"
-                    label="Set the number to be used in each task"
-                  />
-                  <v-text-field
-                    v-model="taskOptions.specificNumber.default"
-                    v-if="taskOptions.specificNumber.isSet"
-                    :rules="taskOptions.specificNumber.rules"
-                    class="ma-1"
-                    label="This number will be used in each task"
-                    hide-details="auto"
-                  />
-                </v-row>
-                <v-row class="ma-0 pa-0">
-                  <v-switch
-                    v-model="taskOptions.maxNumber.isSet"
-                    :disabled="started"
-                    class="ma-1"
-                    label="Set max possible result number"
-                  />
-                  <v-text-field
-                    v-model="taskOptions.maxNumber.default"
-                    v-if="taskOptions.maxNumber.isSet"
-                    :rules="taskOptions.maxNumber.rules"
-                    class="ma-1"
-                    label="The result will not be bigger than this number"
-                    hide-details="auto"
-                  />
-                </v-row>
                 <v-select
                   v-model="taskOptions.levels.selected"
+                  :disabled="started"
                   :items="levelsNames"
                   label="Level"
                 />
-                <p>Flow</p>
+                <p class="sub-header">Flow</p>
                 <v-row class="ma-0 pa-0">
                   <v-switch
                     v-model="taskOptions.timer.isSet"
@@ -189,8 +190,9 @@
                   />
                   <v-text-field
                     v-if="taskOptions.timer.isSet"
-                    :rules="taskOptions.timer.rules"
                     v-model="taskOptions.timer.initValue"
+                    :rules="taskOptions.timer.rules"
+                    :disabled="started"
                     class="ma-1"
                     label="Time in seconds"
                     hide-details="auto"
@@ -205,8 +207,9 @@
                   />
                   <v-text-field
                     v-if="taskOptions.tasksLimit.isSet"
+                    v-model="taskOptions.tasksLimit.value"
                     :rules="taskOptions.tasksLimit.rules"
-                    v-model="taskOptions.tasksLimit.default"
+                    :disabled="started"
                     class="ma-1"
                     label="Max number of tasks"
                     hide-details="auto"
@@ -224,7 +227,7 @@
                   class="ma-1"
                   label="Show options"
                 />
-                <p>Results</p>
+                <p class="sub-header">Results</p>
                 <v-switch
                   v-model="taskOptions.showAnswers"
                   :disabled="started"
@@ -258,7 +261,7 @@ export default {
       taskOptions: {
         tasksLimit: {
           isSet: false,
-          default: 10,
+          value: 10,
           rules: [
             value => Number(value) >= 1 || 'Min number 1',
           ],
@@ -277,22 +280,6 @@ export default {
             green: 'light-green',
           },
         },
-        specificNumber: {
-          isSet: false,
-          default: 0,
-          rules: [
-            value => !!Number(value) || 'Specify the number',
-            value => Number(value) === parseInt(value, 10) || 'The number must be integer',
-          ],
-        },
-        maxNumber: {
-          isSet: false,
-          default: 0,
-          rules: [
-            value => !!Number(value) || 'Specify the number',
-            value => Number(value) === parseInt(value, 10) || 'The number must be integer',
-          ],
-        },
         levels: {
           selected: 'Easy',
           items: {
@@ -307,8 +294,8 @@ export default {
               name: 'Easy',
               multiplication: {
                 maxResult: 10000,
-                minResult: 1,
-                minArg: 1,
+                minResult: 101,
+                minArg: 2,
                 maxArg: 100,
               },
             },
@@ -364,6 +351,8 @@ export default {
         id: '',
         results: {},
       },
+      resultMessage: '',
+      noSolvedTasksMessage: 'You have not solved any tasks',
     };
   },
 
@@ -375,10 +364,10 @@ export default {
       return this.paused ? this.breakButtonTexts.continue : this.breakButtonTexts.pause;
     },
     taskNumLeft() {
-      return this.activeSubTask[0];
+      return this.addCommas(this.activeSubTask[0]);
     },
     taskNumRight() {
-      return this.activeSubTask[1];
+      return this.addCommas(this.activeSubTask[1]);
     },
     taskNumResult() {
       const left = this.taskNumLeft;
@@ -444,19 +433,47 @@ export default {
       this.initSession();
       this.generateSubTasks();
       this.goToNextSubTask();
+      this.hideTaskOptions();
+      this.startTimer();
+      this.clearResultMessage();
       this.started = true;
-      this.showTaskOptions = false;
-      if (this.taskOptions.timer.isSet) this.startTimer();
     },
     stopTask() {
+      this.clearTasks();
+      this.clearTaskAnswer();
+      this.createResultMessage();
+      this.stopTimer();
       this.started = false;
       this.paused = false;
-      this.taskAnswer = '';
-      // stop timer
-      if (this.taskOptions.timer.isSet) {
-        this.taskOptions.timer.currentValue = 0;
-        clearInterval(this.taskOptions.timer.timerInstance);
+    },
+    getCorrectAnswersNum() {
+      const results = this.sessions.results[this.sessions.id];
+      return results.correct.length;
+    },
+    getIncorrectAnswersNum() {
+      const results = this.sessions.results[this.sessions.id];
+      return results.incorrect.length;
+    },
+    getTasksLeftNum() {
+      return this.taskOptions.tasksLimit.value
+        - this.getIncorrectAnswersNum() - this.getCorrectAnswersNum();
+    },
+    taskFinished() {
+      return this.taskOptions.tasksLimit.isSet && this.getTasksLeftNum() === 0;
+    },
+    createResultMessage() {
+      const correctAnswers = this.getCorrectAnswersNum();
+      const subTasksNum = correctAnswers + this.getIncorrectAnswersNum();
+      if (subTasksNum === 0) {
+        this.resultMessage = this.noSolvedTasksMessage;
+      } else {
+        const answersCorrectPercent = Math.round((correctAnswers / subTasksNum) * 100);
+        this.resultMessage = `Total tasks solved: ${subTasksNum}.
+        Correct answers: ${correctAnswers} (${answersCorrectPercent}%)`;
       }
+    },
+    hideTaskOptions() {
+      this.showTaskOptions = false;
     },
     goToNextSubTask() {
       const nextTask = this.subTasks.splice(0, 1)[0];
@@ -471,6 +488,13 @@ export default {
     clearTaskAnswer() {
       this.taskAnswer = '';
     },
+    clearTasks() {
+      this.activeSubTask = '';
+      this.subTasks = [];
+    },
+    clearResultMessage() {
+      this.resultMessage = '';
+    },
     initSession() {
       if (!this.sessions.id) {
         this.sessions.id = 1;
@@ -481,6 +505,8 @@ export default {
       };
     },
     submitAnswer() {
+      if (!this.answerValueCorrect(this.taskAnswer)) return;
+      // store user's answers
       const results = this.sessions.results[this.sessions.id];
       if (+this.taskAnswer === this.taskNumResult) {
         results.correct.push(this.activeSubTask);
@@ -488,18 +514,35 @@ export default {
         this.activeSubTask.push(+this.taskAnswer);
         results.incorrect.push(this.activeSubTask);
       }
-      this.clearTaskAnswer();
-      if (this.subTasks.length === 0) this.generateSubTasks();
-      this.goToNextSubTask();
+      // go to the next task
+      if (!this.taskFinished()) {
+        this.clearTaskAnswer();
+        if (this.subTasks.length === 0) this.generateSubTasks();
+        this.goToNextSubTask();
+      } else {
+        this.stopTask();
+      }
+    },
+    answerValueCorrect(val) {
+      const num = Number(val);
+      return !(!num || num !== parseInt(val, 10));
     },
     startTimer() {
-      const interval = setInterval(() => {
-        const { timer } = this.taskOptions;
-        if (timer.currentValue !== timer.initValue) {
-          timer.currentValue += 1;
-        } else clearInterval(interval);
-      }, 1000);
-      this.taskOptions.timer.timerInstance = interval;
+      if (this.taskOptions.timer.isSet) {
+        const interval = setInterval(() => {
+          const { timer } = this.taskOptions;
+          if (timer.currentValue !== timer.initValue) {
+            timer.currentValue += 1;
+          } else clearInterval(interval);
+        }, 1000);
+        this.taskOptions.timer.timerInstance = interval;
+      }
+    },
+    stopTimer() {
+      if (this.taskOptions.timer.isSet) {
+        this.taskOptions.timer.currentValue = 0;
+        clearInterval(this.taskOptions.timer.timerInstance);
+      }
     },
     generateSubTasks() {
       // generate sub-tasks for multiplication/division table
@@ -568,6 +611,20 @@ export default {
       }
       return array;
     },
+    // https://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
+    addCommas(num) {
+      try {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      } catch (e) {
+        return '';
+      }
+    },
+  },
+
+  watch: {
+    timerPercent(val) {
+      if (val === 100) this.stopTask();
+    },
   },
 };
 </script>
@@ -578,4 +635,14 @@ export default {
   .task
     font-size 25px
     text-align center
+  .counter
+    font-size 12px
+  .counter-correct
+    color #8BC34A
+  .counter-incorrect
+    color #EF9A9A
+  .sub-header
+    font-size 12px
+    opacity 0.7
+    margin-bottom 10px
 </style>
