@@ -41,6 +41,7 @@
                 <v-col
                   cols="2"
                   offset="2"
+                  class="px-0"
                 >
                   <div class="py-5">
                     {{ taskNumLeft }}
@@ -49,12 +50,15 @@
                 <!-- Task sign -->
                 <v-col
                   cols="1"
-                  class="py-8"
+                  class="py-8 px-0"
                 >
                   <div>{{ taskSign }}</div>
                 </v-col>
                 <!-- Right argument -->
-                <v-col cols="2">
+                <v-col
+                  cols="2"
+                  class="px-0"
+                >
                   <div class="py-5">
                     {{ taskNumRight }}
                   </div>
@@ -62,12 +66,15 @@
                 <!-- Equals sign -->
                 <v-col
                   cols="1"
-                  class="py-8"
+                  class="py-8 px-0"
                 >
                   <div>=</div>
                 </v-col>
                 <!-- Result -->
-                <v-col cols="2">
+                <v-col
+                  cols="2"
+                  class="px-0"
+                >
                   <v-text-field
                     v-model="taskAnswer"
                     @keydown.enter="submitAnswer"
@@ -143,6 +150,7 @@
             </div>
           </v-card-text>
           <v-card-actions>
+            <!-- Sections -->
             <v-btn-toggle
               v-model="activeSection"
               mandatory
@@ -152,6 +160,7 @@
               <v-btn
                 v-for="section in sections"
                 :key="section"
+                :disabled="started"
                 small
               >
                 {{ section }}
@@ -292,38 +301,62 @@ export default {
             },
             easy: {
               name: 'Easy',
-              multiplication: {
-                maxResult: 10000,
+              multiplicationOrDivision: {
+                maxResult: 1000,
                 minResult: 101,
                 minArg: 2,
                 maxArg: 100,
               },
+              additionOrSubtraction: {
+                maxResult: 1000,
+                minResult: 101,
+                minArg: 11,
+                maxArg: 989,
+              },
             },
             intermediate: {
               name: 'Intermediate',
-              multiplication: {
+              multiplicationOrDivision: {
                 maxResult: 1000000,
-                minResult: 10001,
+                minResult: 1001,
                 minArg: 11,
                 maxArg: 90909,
+              },
+              additionOrSubtraction: {
+                maxResult: 1000000,
+                minResult: 1001,
+                minArg: 1001,
+                maxArg: 998999,
               },
             },
             hard: {
               name: 'Hard',
-              multiplication: {
+              multiplicationOrDivision: {
                 maxResult: 1000000000,
                 minResult: 1000001,
                 minArg: 101,
                 maxArg: 9900990,
               },
+              additionOrSubtraction: {
+                maxResult: 1000000000,
+                minResult: 1000001,
+                minArg: 10001,
+                maxArg: 999989999,
+              },
             },
             extraHard: {
               name: 'Extra-hard',
-              multiplication: {
+              multiplicationOrDivision: {
                 maxResult: 1000000000000,
                 minResult: 1000000001,
                 minArg: 1001,
                 maxArg: 999000999,
+              },
+              additionOrSubtraction: {
+                maxResult: 1000000000000,
+                minResult: 1000000001,
+                minArg: 100001,
+                maxArg: 999999899999,
               },
             },
           },
@@ -370,8 +403,8 @@ export default {
       return this.addCommas(this.activeSubTask[1]);
     },
     taskNumResult() {
-      const left = this.taskNumLeft;
-      const right = this.taskNumRight;
+      const left = this.activeSubTask[0];
+      const right = this.activeSubTask[1];
       switch (this.activeSection) {
         case 0:
           return left * right;
@@ -551,9 +584,12 @@ export default {
         && this.taskOptions.levels.selected.indexOf(this.tableLevelName) > -1
       ) {
         this.subTasks = this.generateTableSubTasks();
-      // generate sub-tasks for multiplication section
-      } else if (this.activeSection === 0) {
-        this.subTasks.push(this.generateMultiplicationSubTask());
+      // generate sub-tasks for multiplication/division sections
+      } else if (this.activeSection === 0 || this.activeSection === 1) {
+        this.subTasks.push(this.generateMultiplicationOrDivisionSubTask());
+      // generate sub-tasks for addition/subtraction sections
+      } else if (this.activeSection === 2 || this.activeSection === 3) {
+        this.subTasks.push(this.generateAdditionOrSubtractionSubTask());
       }
     },
     // generates all possible sub-tasks for table level
@@ -569,7 +605,10 @@ export default {
       let rightArg = minArg;
       while (leftArg <= maxResult && leftArg * rightArg <= maxResult) {
         if (leftArg * rightArg >= minResult && leftArg <= rightArg && rightArg <= maxArg) {
-          tasks.push([leftArg, rightArg]);
+          // multiplication table arguments
+          if (this.activeSection === 0) tasks.push([leftArg, rightArg]);
+          // division table arguments
+          if (this.activeSection === 1) tasks.push([leftArg * rightArg, leftArg]);
         }
         rightArg += 1;
         if (rightArg > maxResult || leftArg * rightArg > maxResult) {
@@ -579,15 +618,14 @@ export default {
       }
       return this.shuffleArray(tasks);
     },
-    generateMultiplicationSubTask() {
-      const level = Object.values(this.taskOptions.levels.items)
-        .find(item => item.name === this.taskOptions.levels.selected);
+    generateMultiplicationOrDivisionSubTask() {
+      const level = this.getLevel();
       const {
         maxArg,
         minArg,
         maxResult,
         minResult,
-      } = level.multiplication;
+      } = level.multiplicationOrDivision;
       let leftArg = this.generateRandomNumber(minArg, maxArg);
       let rightArg = this.generateRandomNumber(minArg, maxArg);
       while (
@@ -597,7 +635,36 @@ export default {
         leftArg = this.generateRandomNumber(minArg, maxArg);
         rightArg = this.generateRandomNumber(minArg, maxArg);
       }
-      return [leftArg, rightArg];
+      // multiplication arguments
+      if (this.activeSection === 0) return [leftArg, rightArg];
+      // division arguments
+      return [leftArg * rightArg, leftArg];
+    },
+    generateAdditionOrSubtractionSubTask() {
+      const level = this.getLevel();
+      const {
+        maxArg,
+        minArg,
+        maxResult,
+        minResult,
+      } = level.additionOrSubtraction;
+      let leftArg = this.generateRandomNumber(minArg, maxArg);
+      let rightArg = this.generateRandomNumber(minArg, maxArg);
+      while (
+        (leftArg + rightArg < minResult || leftArg + rightArg > maxResult)
+        || (this.activeSection === 3 && rightArg < minResult)
+      ) {
+        leftArg = this.generateRandomNumber(minArg, maxArg);
+        rightArg = this.generateRandomNumber(minArg, maxArg);
+      }
+      // addition arguments
+      if (this.activeSection === 2) return [leftArg, rightArg];
+      // subtraction arguments
+      return [leftArg + rightArg, leftArg];
+    },
+    getLevel() {
+      return Object.values(this.taskOptions.levels.items)
+        .find(item => item.name === this.taskOptions.levels.selected);
     },
     generateRandomNumber(min, max) {
       return Math.floor(Math.random() * (max - min) + min);
