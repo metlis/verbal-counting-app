@@ -21,7 +21,7 @@
                 text
                 dark
               >
-                Start
+                {{controlButtons.start}}
               </v-btn>
             </div>
             <!-- Task content -->
@@ -29,6 +29,7 @@
               v-if="started"
               class="task"
             >
+              <!-- Timer -->
               <v-row>
                 <v-progress-linear
                   v-if="taskOptions.timer.isSet"
@@ -36,7 +37,8 @@
                   :color="timerColor"
                 />
               </v-row>
-              <v-row>
+              <!-- Sub-task -->
+              <v-row v-if="!correctAnswerVisible">
                 <!-- Left argument -->
                 <v-col
                   cols="2"
@@ -93,15 +95,41 @@
                   </span>
                 </v-col>
               </v-row>
+              <!-- Correct answer -->
+              <v-row v-if="correctAnswerVisible">
+                <v-col
+                  cols="10"
+                  offset="1"
+                  class="py-8"
+                >
+                  <span class="correct-answer">
+                    {{correctAnswerVisible}}
+                  </span>
+                </v-col>
+                <v-col
+                  cols="10"
+                  offset="1"
+                >
+                  <v-btn
+                    @click="correctAnswerVisible = ''"
+                    text
+                  >
+                    {{controlButtons.continue}}
+                  </v-btn>
+                </v-col>
+              </v-row>
               <!-- Submit button -->
-              <v-row>
-                <v-col cols="10" offset="1">
+              <v-row v-if="!correctAnswerVisible">
+                <v-col
+                  cols="10"
+                  offset="1"
+                >
                   <v-btn
                     @click="submitAnswer"
                     :disabled="paused"
                     text
                   >
-                    Submit
+                    {{controlButtons.submit}}
                   </v-btn>
                 </v-col>
               </v-row>
@@ -123,7 +151,7 @@
                   text
                   small
                 >
-                  Stop
+                  {{controlButtons.stop}}
                 </v-btn>
               </div>
             </div>
@@ -144,7 +172,7 @@
                     small
                     text
                   >
-                    Restart
+                    {{controlButtons.restart}}
                   </v-btn>
                 </v-col>
               </v-row>
@@ -239,10 +267,10 @@
                 />
                 <p class="sub-header">Results</p>
                 <v-switch
-                  v-model="taskOptions.showAnswers"
+                  v-model="taskOptions.showCorrectAnswers"
                   :disabled="started"
                   class="ma-1"
-                  label="Show correct answers"
+                  label="Show correct answers on error"
                 />
                 <v-switch
                   v-model="taskOptions.showHistory"
@@ -364,13 +392,14 @@ export default {
             },
           },
         },
-        showAnswers: true,
+        showCorrectAnswers: false,
         showTasksCount: true,
         showHistory: true,
         showOptions: true,
       },
       started: false,
       paused: false,
+      correctAnswerVisible: '',
       taskAnswer: '',
       chevronIcons: {
         up: 'mdi-chevron-up',
@@ -390,6 +419,14 @@ export default {
       resultMessage: '',
       noSolvedTasksMessage: 'You have not solved any tasks',
       solvedTasksMessages: ['Total tasks solved', 'Correct answers'],
+      controlButtons: {
+        start: 'Start',
+        stop: 'Stop',
+        pause: 'Pause',
+        continue: 'Continue',
+        submit: 'Submit',
+        restart: 'Restart',
+      },
     };
   },
 
@@ -472,7 +509,7 @@ export default {
     startTask() {
       this.initSession();
       this.generateSubTasks();
-      this.goToNextSubTask();
+      this.showSubTask();
       this.hideTaskOptions();
       this.startTimer();
       this.clearResultMessage();
@@ -516,7 +553,7 @@ export default {
     hideTaskOptions() {
       this.showTaskOptions = false;
     },
-    goToNextSubTask() {
+    showSubTask() {
       const nextTask = this.subTasks.splice(0, 1)[0];
       this.activeSubTask = nextTask;
     },
@@ -555,14 +592,20 @@ export default {
       if (+this.taskAnswer === this.taskNumResult) {
         results.correct.push(this.activeSubTask);
       } else {
+        this.showCorrectAnswer();
         this.activeSubTask.push(+this.taskAnswer);
         results.incorrect.push(this.activeSubTask);
       }
-      // go to the next task
+      this.goToNextSubTask();
+    },
+    showCorrectAnswer() {
+      if (this.taskOptions.showCorrectAnswers) this.correctAnswerVisible = this.taskNumResult;
+    },
+    goToNextSubTask() {
       if (!this.taskFinished()) {
         this.clearTaskAnswer();
         if (this.subTasks.length === 0) this.generateSubTasks();
-        this.goToNextSubTask();
+        this.showSubTask();
       } else {
         this.stopTask();
       }
@@ -764,4 +807,6 @@ export default {
     font-size 12px
     opacity 0.7
     margin-bottom 10px
+  .correct-answer
+    color #EF9A9A
 </style>
