@@ -103,7 +103,7 @@
                   class="py-8"
                 >
                   <span class="correct-answer">
-                    {{correctAnswerVisible}}
+                    {{correctAnswerPrettified}}
                   </span>
                 </v-col>
                 <v-col
@@ -116,6 +116,24 @@
                   >
                     {{controlButtons.continue}}
                   </v-btn>
+                </v-col>
+              </v-row>
+              <!-- Options -->
+              <v-row v-if="taskOptions.showOptions && !correctAnswerVisible">
+                <v-col
+                  cols="10"
+                  offset="1"
+                  class="py-8"
+                >
+                  <v-chip
+                    v-for="option in answerOptions"
+                    @click="submitAnswerFromOptions(option)"
+                    :key="option"
+                    :disabled="paused"
+                    class="mx-1 option"
+                  >
+                    {{option}}
+                  </v-chip>
                 </v-col>
               </v-row>
               <!-- Submit button -->
@@ -195,7 +213,7 @@
                 {{ section }}
               </v-btn>
             </v-btn-toggle>
-            <v-spacer></v-spacer>
+            <v-spacer />
             <v-btn
               icon
               @click="showTaskOptions = !showTaskOptions"
@@ -206,7 +224,7 @@
           <!-- Task options -->
           <v-expand-transition>
             <div v-show="showTaskOptions">
-              <v-divider></v-divider>
+              <v-divider />
               <v-card-text>
                 <h4 class="options">
                   Options
@@ -224,7 +242,7 @@
                     v-model="taskOptions.timer.isSet"
                     :disabled="started"
                     class="ma-1"
-                    label="Set the timer"
+                    label="Set time limits"
                   />
                   <v-text-field
                     v-if="taskOptions.timer.isSet"
@@ -503,6 +521,35 @@ export default {
       });
       return names;
     },
+    correctAnswerPrettified() {
+      return this.addCommas(this.correctAnswerVisible);
+    },
+    answerOptions() {
+      let answer = this.taskNumResult;
+      let firstHint;
+      let secondHint;
+      if (answer <= 10) {
+        firstHint = answer + this.generateRandomNumber(1, 2);
+        secondHint = answer + this.generateRandomNumber(3, 4);
+      } else if (answer <= 100) {
+        firstHint = answer + this.generateRandomNumber(1, 5);
+        secondHint = answer + this.generateRandomNumber(6, 10);
+      } else if (answer <= 1000) {
+        firstHint = answer + this.generateRandomNumber(10, 50);
+        secondHint = answer + this.generateRandomNumber(51, 100);
+      } else if (answer <= 10000) {
+        firstHint = answer + this.generateRandomNumber(100, 200);
+        secondHint = answer + this.generateRandomNumber(201, 300);
+      } else {
+        firstHint = answer + this.generateRandomNumber(300, 650);
+        secondHint = answer + this.generateRandomNumber(651, 1000);
+      }
+      // add commas
+      answer = this.addCommas(answer);
+      firstHint = this.addCommas(firstHint);
+      secondHint = this.addCommas(secondHint);
+      return this.shuffleArray([answer, firstHint, secondHint]);
+    },
   },
 
   methods: {
@@ -538,6 +585,11 @@ export default {
     },
     taskFinished() {
       return this.taskOptions.tasksLimit.isSet && this.getTasksLeftNum() === 0;
+    },
+    submitAnswerFromOptions(option) {
+      const answer = Number(option.replace(/,/g, ''));
+      this.taskAnswer = answer;
+      this.submitAnswer();
     },
     createResultMessage() {
       const correctAnswers = this.getCorrectAnswersNum();
@@ -809,4 +861,6 @@ export default {
     margin-bottom 10px
   .correct-answer
     color #EF9A9A
+  .option
+    cursor pointer
 </style>
