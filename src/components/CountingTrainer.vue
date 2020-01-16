@@ -7,13 +7,13 @@
       >
         <v-card>
           <v-card-title>
-            Verbal counting trainer
+            {{appTitle}}
           </v-card-title>
           <v-card-text>
             <!-- Start button -->
             <div class="d-flex">
               <v-btn
-                v-if="!started && !resultMessage"
+                v-if="startButtonIsVisible"
                 @click="startTask"
                 class="my-5 mx-auto"
                 color="success"
@@ -38,7 +38,7 @@
                 />
               </v-row>
               <!-- Sub-task -->
-              <v-row v-if="!correctAnswerVisible">
+              <v-row v-if="!visibleCorrectAnswer">
                 <!-- Left argument -->
                 <v-col
                   cols="2"
@@ -46,7 +46,7 @@
                   class="px-0"
                 >
                   <div class="py-5">
-                    {{ taskNumLeft }}
+                    {{ subTaskFirstArgument }}
                   </div>
                 </v-col>
                 <!-- Task sign -->
@@ -54,7 +54,9 @@
                   cols="1"
                   class="py-8 px-0"
                 >
-                  <div>{{ taskSign }}</div>
+                  <div>
+                    {{ subTaskSign }}
+                  </div>
                 </v-col>
                 <!-- Right argument -->
                 <v-col
@@ -62,7 +64,7 @@
                   class="px-0"
                 >
                   <div class="py-5">
-                    {{ taskNumRight }}
+                    {{ subTaskSecondArgument }}
                   </div>
                 </v-col>
                 <!-- Equals sign -->
@@ -70,33 +72,41 @@
                   cols="1"
                   class="py-8 px-0"
                 >
-                  <div>=</div>
+                  <div>
+                    =
+                  </div>
                 </v-col>
                 <!-- Result -->
                 <v-col
                   cols="2"
                   class="px-0"
                 >
+                  <!-- Answer input -->
                   <v-text-field
-                    v-model="taskAnswer"
+                    v-model="subTaskAnswer"
                     @keydown.enter="submitAnswer"
                     :disabled="paused"
                   />
+                  <!-- Task counter -->
                   <span
-                    v-if="taskOptions.showTasksCount"
+                    v-if="taskOptions.showTasksCount.value"
                     class="counter"
                   >
-                    <span class="counter-incorrect">{{getIncorrectAnswersNum()}}</span>
+                    <span class="counter-incorrect">
+                      {{getIncorrectAnswersQuantity()}}
+                    </span>
                     /
-                    <span class="counter-correct">{{getCorrectAnswersNum()}}</span>
+                    <span class="counter-correct">
+                      {{getCorrectAnswersQuantity()}}
+                    </span>
                     <span v-if="taskOptions.tasksLimit.isSet">
-                    / {{getTasksLeftNum()}}
+                    / {{getTasksLeftQuantity()}}
                     </span>
                   </span>
                 </v-col>
               </v-row>
               <!-- Correct answer -->
-              <v-row v-if="correctAnswerVisible">
+              <v-row v-if="visibleCorrectAnswer">
                 <v-col
                   cols="10"
                   offset="1"
@@ -111,33 +121,33 @@
                   offset="1"
                 >
                   <v-btn
-                    @click="correctAnswerVisible = ''"
+                    @click="visibleCorrectAnswer = ''"
                     text
                   >
                     {{controlButtons.continue}}
                   </v-btn>
                 </v-col>
               </v-row>
-              <!-- Options -->
-              <v-row v-if="taskOptions.showOptions && !correctAnswerVisible">
+              <!-- Hints -->
+              <v-row v-if="hintsAreVisible">
                 <v-col
                   cols="10"
                   offset="1"
                   class="py-8"
                 >
                   <v-chip
-                    v-for="option in answerOptions"
-                    @click="submitAnswerFromOptions(option)"
-                    :key="option"
+                    v-for="hint in answerHints"
+                    @click="submitAnswerFromHints(hint)"
+                    :key="hint"
                     :disabled="paused"
                     class="mx-1 option"
                   >
-                    {{option}}
+                    {{hint}}
                   </v-chip>
                 </v-col>
               </v-row>
               <!-- Submit button -->
-              <v-row v-if="!correctAnswerVisible">
+              <v-row v-if="!visibleCorrectAnswer">
                 <v-col
                   cols="10"
                   offset="1"
@@ -175,12 +185,12 @@
             </div>
             <!-- Result content -->
             <div
-              v-if="resultMessage"
+              v-if="taskResultMessage"
               class="task"
             >
               <v-row>
                 <v-col cols="12">
-                  {{resultMessage}}
+                  {{taskResultMessage}}
                 </v-col>
               </v-row>
               <v-row>
@@ -218,7 +228,9 @@
               icon
               @click="showTaskOptions = !showTaskOptions"
             >
-              <v-icon>{{ chevron }}</v-icon>
+              <v-icon>
+                {{ chevron }}
+              </v-icon>
             </v-btn>
           </v-card-actions>
           <!-- Task options -->
@@ -227,74 +239,66 @@
               <v-divider />
               <v-card-text>
                 <h4 class="options">
-                  Options
+                  {{taskOptionsHeader}}
                 </h4>
                 <br>
                 <v-select
                   v-model="taskOptions.levels.selected"
+                  :label="taskOptions.levels.label"
                   :disabled="started"
                   :items="levelsNames"
-                  label="Level"
                 />
-                <p class="sub-header">Flow</p>
                 <v-row class="ma-0 pa-0">
                   <v-switch
                     v-model="taskOptions.timer.isSet"
+                    :label="taskOptions.timer.switchLabel"
                     :disabled="started"
                     class="ma-1"
-                    label="Set time limits"
                   />
                   <v-text-field
                     v-if="taskOptions.timer.isSet"
                     v-model="taskOptions.timer.initValue"
                     :rules="taskOptions.timer.rules"
+                    :label="taskOptions.timer.fieldLabel"
                     :disabled="started"
                     class="ma-1"
-                    label="Time in seconds"
                     hide-details="auto"
                   />
                 </v-row>
                 <v-row class="ma-0 pa-0">
                   <v-switch
                     v-model="taskOptions.tasksLimit.isSet"
+                    :label="taskOptions.tasksLimit.switchLabel"
                     :disabled="started"
                     class="ma-1"
-                    label="Limit the number of tasks"
                   />
                   <v-text-field
                     v-if="taskOptions.tasksLimit.isSet"
                     v-model="taskOptions.tasksLimit.value"
                     :rules="taskOptions.tasksLimit.rules"
+                    :label="taskOptions.tasksLimit.fieldLabel"
                     :disabled="started"
                     class="ma-1"
-                    label="Max number of tasks"
                     hide-details="auto"
                   />
                 </v-row>
                 <v-switch
-                  v-model="taskOptions.showTasksCount"
+                  v-model="taskOptions.showTasksCount.value"
+                  :label="taskOptions.showTasksCount.label"
                   :disabled="started"
                   class="ma-1"
-                  label="Show the counter for tasks"
                 />
                 <v-switch
-                  v-model="taskOptions.showOptions"
+                  v-model="taskOptions.showHints.value"
+                  :label="taskOptions.showHints.label"
                   :disabled="started"
                   class="ma-1"
-                  label="Show options"
-                />
-                <p class="sub-header">Results</p>
-                <v-switch
-                  v-model="taskOptions.showCorrectAnswers"
-                  :disabled="started"
-                  class="ma-1"
-                  label="Show correct answers on error"
                 />
                 <v-switch
-                  v-model="taskOptions.showHistory"
+                  v-model="taskOptions.showCorrectAnswers.value"
+                  :label="taskOptions.showCorrectAnswers.label"
                   :disabled="started"
                   class="ma-1"
-                  label="Show history"
                 />
               </v-card-text>
             </div>
@@ -307,16 +311,17 @@
 
 <script>
 export default {
-  name: 'TrainerContent',
+  name: 'CountingTrainer',
 
   data() {
     return {
+      started: false,
+      paused: false,
       showTaskOptions: true,
-      sections: ['Multiplication', 'Division', 'Addition', 'Subtraction', 'Combined'],
-      activeSection: 0,
-      combinedSubSection: '',
       taskOptions: {
         tasksLimit: {
+          switchLabel: 'Max number of tasks',
+          fieldLabel: 'Max number of tasks',
           isSet: false,
           value: 10,
           rules: [
@@ -324,6 +329,8 @@ export default {
           ],
         },
         timer: {
+          switchLabel: 'Limit the number of tasks',
+          fieldLabel: 'Time in seconds',
           isSet: false,
           initValue: 10,
           currentValue: 0,
@@ -338,15 +345,19 @@ export default {
           },
         },
         levels: {
+          label: 'Level',
           selected: 'Easy',
           default: 'Easy',
           items: {
             table: {
               name: 'Table',
-              maxResult: 100,
-              minResult: 1,
-              minArg: 1,
-              maxArg: 10,
+              multiplicationOrDivision: {
+                maxResult: 100,
+                minResult: 1,
+                minArg: 1,
+                maxArg: 10,
+              },
+              additionOrSubtraction: {},
             },
             easy: {
               name: 'Easy',
@@ -410,15 +421,36 @@ export default {
             },
           },
         },
-        showCorrectAnswers: false,
-        showTasksCount: true,
-        showHistory: true,
-        showOptions: true,
+        showCorrectAnswers: {
+          label: 'Show correct answers on error',
+          value: false,
+        },
+        showTasksCount: {
+          label: 'Show a counter for tasks',
+          value: true,
+        },
+        showHints: {
+          label: 'Show hints',
+          value: false,
+        },
       },
-      started: false,
-      paused: false,
-      correctAnswerVisible: '',
-      taskAnswer: '',
+      sections: ['Multiplication', 'Division', 'Addition', 'Subtraction', 'Combined'],
+      subTasks: [],
+      activeSubTaskContent: '',
+      activeSection: 0,
+      combinedSubSection: '',
+      subTaskAnswer: '',
+      visibleCorrectAnswer: '',
+      sessions: {
+        id: '',
+        results: {},
+      },
+      taskResultMessage: '',
+      noSolvedTasksMessage: 'You have not solved any tasks',
+      solvedTasksMessages: ['Total tasks solved', 'Correct answers'],
+      appTitle: 'Verbal counting trainer',
+      taskOptionsHeader: 'Options',
+      tableLevelName: 'Table',
       chevronIcons: {
         up: 'mdi-chevron-up',
         down: 'mdi-chevron-down',
@@ -427,16 +459,6 @@ export default {
         pause: 'Pause',
         continue: 'Continue',
       },
-      tableLevelName: 'Table',
-      subTasks: [],
-      activeSubTask: '',
-      sessions: {
-        id: '',
-        results: {},
-      },
-      resultMessage: '',
-      noSolvedTasksMessage: 'You have not solved any tasks',
-      solvedTasksMessages: ['Total tasks solved', 'Correct answers'],
       controlButtons: {
         start: 'Start',
         stop: 'Stop',
@@ -449,37 +471,25 @@ export default {
   },
 
   computed: {
-    chevron() {
-      return this.showTaskOptions ? this.chevronIcons.up : this.chevronIcons.down;
-    },
-    breakButtonText() {
-      return this.paused ? this.breakButtonTexts.continue : this.breakButtonTexts.pause;
-    },
-    taskNumLeft() {
-      return this.addCommas(this.activeSubTask[0]);
-    },
-    taskNumRight() {
-      return this.addCommas(this.activeSubTask[1]);
-    },
-    taskNumResult() {
+    subTaskResult() {
       // if combined section is active, use its current subsection index
       const section = this.combinedSubSection !== '' ? this.combinedSubSection : this.activeSection;
-      const left = this.activeSubTask[0];
-      const right = this.activeSubTask[1];
+      const firstArg = this.activeSubTaskContent[0];
+      const secondArg = this.activeSubTaskContent[1];
       switch (section) {
         case 0:
-          return left * right;
+          return firstArg * secondArg;
         case 1:
-          return left / right;
+          return firstArg / secondArg;
         case 2:
-          return left + right;
+          return firstArg + secondArg;
         case 3:
-          return left - right;
+          return firstArg - secondArg;
         default:
           return '';
       }
     },
-    taskSign() {
+    subTaskSign() {
       const section = this.combinedSubSection !== '' ? this.combinedSubSection : this.activeSection;
       switch (section) {
         case 0:
@@ -508,24 +518,25 @@ export default {
     levelsNames() {
       const names = [];
       Object.values(this.taskOptions.levels.items).forEach((item) => {
-        // generate table level name for multiplication and division sections
+        const levelName = item.name;
+        // generate table level name for multiplication/division
         if (
-          item.name === this.tableLevelName
-          && (this.activeSection <= 1)
+          levelName === this.tableLevelName
+          && this.activeSection <= 1
         ) {
           const sectionName = this.sections[this.activeSection];
-          names.push(`${sectionName} ${item.name}`);
+          names.push(`${sectionName} ${levelName}`);
         }
         // generate other levels
-        if (item.name !== this.tableLevelName) names.push(item.name);
+        if (levelName !== this.tableLevelName) names.push(levelName);
       });
       return names;
     },
     correctAnswerPrettified() {
-      return this.addCommas(this.correctAnswerVisible);
+      return this.addCommas(this.visibleCorrectAnswer);
     },
-    answerOptions() {
-      let answer = this.taskNumResult;
+    answerHints() {
+      let answer = this.subTaskResult;
       let firstHint;
       let secondHint;
       if (answer <= 10) {
@@ -550,64 +561,98 @@ export default {
       secondHint = this.addCommas(secondHint);
       return this.shuffleArray([answer, firstHint, secondHint]);
     },
+    startButtonIsVisible() {
+      return !this.started && !this.taskResultMessage;
+    },
+    hintsAreVisible() {
+      return this.taskOptions.showHints.value && !this.visibleCorrectAnswer;
+    },
+    chevron() {
+      return this.showTaskOptions ? this.chevronIcons.up : this.chevronIcons.down;
+    },
+    breakButtonText() {
+      return this.paused ? this.breakButtonTexts.continue : this.breakButtonTexts.pause;
+    },
+    subTaskFirstArgument() {
+      return this.addCommas(this.activeSubTaskContent[0]);
+    },
+    subTaskSecondArgument() {
+      return this.addCommas(this.activeSubTaskContent[1]);
+    },
   },
 
   methods: {
     startTask() {
-      this.initSession();
+      this.initializeSession();
       this.generateSubTasks();
       this.showSubTask();
       this.hideTaskOptions();
       this.startTimer();
-      this.clearResultMessage();
+      this.clearTaskResultMessage();
       this.started = true;
     },
     stopTask() {
-      this.clearTasks();
-      this.clearTaskAnswer();
+      this.clearSubTasks();
+      this.clearSubTaskAnswer();
       this.clearCombinedSubSection();
       this.createResultMessage();
+      this.clearVisibleCorrectAnswer();
       this.stopTimer();
       this.started = false;
       this.paused = false;
     },
-    getCorrectAnswersNum() {
+    submitAnswer() {
+      if (!this.answerValueCorrect(this.subTaskAnswer)) return;
+      // store user's answers
       const results = this.sessions.results[this.sessions.id];
-      return results.correct.length;
+      if (+this.subTaskAnswer === this.subTaskResult) {
+        results.correct.push(this.activeSubTaskContent);
+      } else {
+        this.showCorrectAnswer();
+        // save incorrect sub-task answer as the last item in sub-task content array
+        // not used now
+        this.activeSubTaskContent.push(+this.subTaskAnswer);
+        results.incorrect.push(this.activeSubTaskContent);
+      }
+      this.goToNextSubTask();
     },
-    getIncorrectAnswersNum() {
-      const results = this.sessions.results[this.sessions.id];
-      return results.incorrect.length;
-    },
-    getTasksLeftNum() {
-      return this.taskOptions.tasksLimit.value
-        - this.getIncorrectAnswersNum() - this.getCorrectAnswersNum();
-    },
-    taskFinished() {
-      return this.taskOptions.tasksLimit.isSet && this.getTasksLeftNum() === 0;
-    },
-    submitAnswerFromOptions(option) {
-      const answer = Number(option.replace(/,/g, ''));
-      this.taskAnswer = answer;
+    submitAnswerFromHints(hint) {
+      const answer = Number(hint.replace(/,/g, ''));
+      this.subTaskAnswer = answer;
       this.submitAnswer();
     },
     createResultMessage() {
-      const correctAnswers = this.getCorrectAnswersNum();
-      const subTasksNum = correctAnswers + this.getIncorrectAnswersNum();
-      if (subTasksNum === 0) {
-        this.resultMessage = this.noSolvedTasksMessage;
+      const correctAnswersQuantity = this.getCorrectAnswersQuantity();
+      const subTasksQuantity = correctAnswersQuantity + this.getIncorrectAnswersQuantity();
+      if (subTasksQuantity === 0) {
+        this.taskResultMessage = this.noSolvedTasksMessage;
       } else {
-        const answersCorrectPercent = Math.round((correctAnswers / subTasksNum) * 100);
-        this.resultMessage = `${this.solvedTasksMessages[0]}: ${subTasksNum}.
-        ${this.solvedTasksMessages[1]}: ${correctAnswers} (${answersCorrectPercent}%)`;
+        const answersCorrectPercent = Math.round((correctAnswersQuantity / subTasksQuantity) * 100);
+        this.taskResultMessage = `${this.solvedTasksMessages[0]}: ${subTasksQuantity}.
+        ${this.solvedTasksMessages[1]}: ${correctAnswersQuantity} (${answersCorrectPercent}%)`;
       }
+    },
+    getCorrectAnswersQuantity() {
+      const results = this.sessions.results[this.sessions.id];
+      return results.correct.length;
+    },
+    getIncorrectAnswersQuantity() {
+      const results = this.sessions.results[this.sessions.id];
+      return results.incorrect.length;
+    },
+    getTasksLeftQuantity() {
+      return this.taskOptions.tasksLimit.value
+        - this.getIncorrectAnswersQuantity() - this.getCorrectAnswersQuantity();
+    },
+    taskFinished() {
+      return this.taskOptions.tasksLimit.isSet && this.getTasksLeftQuantity() === 0;
     },
     hideTaskOptions() {
       this.showTaskOptions = false;
     },
     showSubTask() {
       const nextTask = this.subTasks.splice(0, 1)[0];
-      this.activeSubTask = nextTask;
+      this.activeSubTaskContent = nextTask;
     },
     processBreakButtonClick() {
       this.paused = !this.paused;
@@ -615,20 +660,23 @@ export default {
         clearInterval(this.taskOptions.timer.timerInstance);
       } else this.startTimer();
     },
-    clearTaskAnswer() {
-      this.taskAnswer = '';
+    clearSubTaskAnswer() {
+      this.subTaskAnswer = '';
     },
     clearCombinedSubSection() {
       this.combinedSubSection = '';
     },
-    clearTasks() {
-      this.activeSubTask = '';
+    clearSubTasks() {
+      this.activeSubTaskContent = '';
       this.subTasks = [];
     },
-    clearResultMessage() {
-      this.resultMessage = '';
+    clearTaskResultMessage() {
+      this.taskResultMessage = '';
     },
-    initSession() {
+    clearVisibleCorrectAnswer() {
+      this.visibleCorrectAnswer = '';
+    },
+    initializeSession() {
       if (!this.sessions.id) {
         this.sessions.id = 1;
       } else this.sessions.id += 1;
@@ -637,25 +685,14 @@ export default {
         incorrect: [],
       };
     },
-    submitAnswer() {
-      if (!this.answerValueCorrect(this.taskAnswer)) return;
-      // store user's answers
-      const results = this.sessions.results[this.sessions.id];
-      if (+this.taskAnswer === this.taskNumResult) {
-        results.correct.push(this.activeSubTask);
-      } else {
-        this.showCorrectAnswer();
-        this.activeSubTask.push(+this.taskAnswer);
-        results.incorrect.push(this.activeSubTask);
-      }
-      this.goToNextSubTask();
-    },
     showCorrectAnswer() {
-      if (this.taskOptions.showCorrectAnswers) this.correctAnswerVisible = this.taskNumResult;
+      if (this.taskOptions.showCorrectAnswers.value) {
+        this.visibleCorrectAnswer = this.subTaskResult;
+      }
     },
     goToNextSubTask() {
       if (!this.taskFinished()) {
-        this.clearTaskAnswer();
+        this.clearSubTaskAnswer();
         if (this.subTasks.length === 0) this.generateSubTasks();
         this.showSubTask();
       } else {
@@ -694,19 +731,19 @@ export default {
         } else {
           this.subTasks = this.generateTableSubTasks();
         }
-      // generate sub-tasks for multiplication section
+      // generate sub-task for multiplication section
       } else if (this.activeSection === 0) {
         this.subTasks.push(this.generateMultiplicationOrDivisionSubTask(true));
-        // generate sub-tasks for division section
+        // generate sub-task for division section
       } else if (this.activeSection === 1) {
         this.subTasks.push(this.generateMultiplicationOrDivisionSubTask());
-        // generate sub-tasks for addition section
+        // generate sub-task for addition section
       } else if (this.activeSection === 2) {
         this.subTasks.push(this.generateAdditionOrSubtractionSubTask(true));
-        // generate sub-tasks for subtraction section
+        // generate sub-task for subtraction section
       } else if (this.activeSection === 3) {
         this.subTasks.push(this.generateAdditionOrSubtractionSubTask());
-        // generate sub-tasks for combined section
+        // generate sub-task for combined section
       } else if (this.activeSection === 4) {
         const randomSection = this.generateRandomNumber(0, 3);
         this.combinedSubSection = randomSection;
@@ -728,14 +765,15 @@ export default {
         }
       }
     },
-    // generates all possible sub-tasks for table level
+    // generates all possible sub-tasks for the table level
     generateTableSubTasks(isMultiplication) {
+      const level = this.taskOptions.levels.items.table;
       const {
         maxArg,
         minArg,
         maxResult,
         minResult,
-      } = this.taskOptions.levels.items.table;
+      } = level.multiplicationOrDivision;
       const tasks = [];
       let leftArg = minArg;
       let rightArg = minArg;
@@ -755,10 +793,11 @@ export default {
           leftArg += 1;
         }
       }
+      // change the order of items in the resulting array
       return this.shuffleArray(tasks);
     },
     generateMultiplicationOrDivisionSubTask(isMultiplication) {
-      const level = this.getLevel();
+      const level = this.getLevelOptions();
       const {
         maxArg,
         minArg,
@@ -780,7 +819,7 @@ export default {
       return [leftArg * rightArg, leftArg];
     },
     generateAdditionOrSubtractionSubTask(isAddition) {
-      const level = this.getLevel();
+      const level = this.getLevelOptions();
       const {
         maxArg,
         minArg,
@@ -801,10 +840,11 @@ export default {
       // subtraction arguments
       return [leftArg + rightArg, leftArg];
     },
-    getLevel() {
+    getLevelOptions() {
       return Object.values(this.taskOptions.levels.items)
         .find(item => item.name === this.taskOptions.levels.selected);
     },
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
     generateRandomNumber(min, max) {
       return Math.floor(Math.random() * (max - min) + min);
     },
@@ -847,7 +887,7 @@ export default {
   .options
     text-align center
   .task
-    font-size 20px
+    font-size 18px
     text-align center
   .counter
     font-size 12px

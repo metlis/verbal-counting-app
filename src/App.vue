@@ -1,19 +1,19 @@
 <template>
   <v-app>
     <v-content>
-      <TrainerContent/>
+      <CountingTrainer/>
     </v-content>
   </v-app>
 </template>
 
 <script>
-import TrainerContent from './components/TrainerContent.vue';
+import CountingTrainer from './components/CountingTrainer.vue';
 
 export default {
   name: 'App',
 
   components: {
-    TrainerContent,
+    CountingTrainer,
   },
 };
 </script>
