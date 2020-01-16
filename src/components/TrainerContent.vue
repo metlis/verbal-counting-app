@@ -268,6 +268,7 @@ export default {
       showTaskOptions: true,
       sections: ['Multiplication', 'Division', 'Addition', 'Subtraction', 'Combined'],
       activeSection: 0,
+      combinedSubSection: '',
       taskOptions: {
         tasksLimit: {
           isSet: false,
@@ -406,9 +407,11 @@ export default {
       return this.addCommas(this.activeSubTask[1]);
     },
     taskNumResult() {
+      // if combined section is active, use its current subsection index
+      const section = this.combinedSubSection !== '' ? this.combinedSubSection : this.activeSection;
       const left = this.activeSubTask[0];
       const right = this.activeSubTask[1];
-      switch (this.activeSection) {
+      switch (section) {
         case 0:
           return left * right;
         case 1:
@@ -422,7 +425,8 @@ export default {
       }
     },
     taskSign() {
-      switch (this.activeSection) {
+      const section = this.combinedSubSection !== '' ? this.combinedSubSection : this.activeSection;
+      switch (section) {
         case 0:
           return '*';
         case 1:
@@ -477,6 +481,7 @@ export default {
     stopTask() {
       this.clearTasks();
       this.clearTaskAnswer();
+      this.clearCombinedSubSection();
       this.createResultMessage();
       this.stopTimer();
       this.started = false;
@@ -523,6 +528,9 @@ export default {
     },
     clearTaskAnswer() {
       this.taskAnswer = '';
+    },
+    clearCombinedSubSection() {
+      this.combinedSubSection = '';
     },
     clearTasks() {
       this.activeSubTask = '';
@@ -581,27 +589,57 @@ export default {
       }
     },
     generateSubTasks() {
-      // generate sub-tasks for multiplication/division table
-      if (
-        (this.activeSection === 0 || this.activeSection === 1)
-        && this.taskOptions.levels.selected.indexOf(this.tableLevelName) > -1
-      ) {
-        this.subTasks = this.generateTableSubTasks();
-      // generate sub-tasks for multiplication/division sections
-      } else if (this.activeSection === 0 || this.activeSection === 1) {
+      const isTable = this.taskOptions.levels.selected.indexOf(this.tableLevelName) > -1;
+      // generate sub-tasks for tables
+      if (isTable) {
+        // multiplication table
+        if (this.activeSection === 0) {
+          this.subTasks = this.generateTableSubTasks(true);
+        // division table
+        } else {
+          this.subTasks = this.generateTableSubTasks();
+        }
+      // generate sub-tasks for multiplication section
+      } else if (this.activeSection === 0) {
+        this.subTasks.push(this.generateMultiplicationOrDivisionSubTask(true));
+        // generate sub-tasks for division section
+      } else if (this.activeSection === 1) {
         this.subTasks.push(this.generateMultiplicationOrDivisionSubTask());
-      // generate sub-tasks for addition/subtraction sections
-      } else if (this.activeSection === 2 || this.activeSection === 3) {
+        // generate sub-tasks for addition section
+      } else if (this.activeSection === 2) {
+        this.subTasks.push(this.generateAdditionOrSubtractionSubTask(true));
+        // generate sub-tasks for subtraction section
+      } else if (this.activeSection === 3) {
         this.subTasks.push(this.generateAdditionOrSubtractionSubTask());
+        // generate sub-tasks for combined section
+      } else if (this.activeSection === 4) {
+        const randomSection = this.generateRandomNumber(0, 3);
+        this.combinedSubSection = randomSection;
+        switch (randomSection) {
+          case 0:
+            this.subTasks.push(this.generateMultiplicationOrDivisionSubTask(true));
+            break;
+          case 1:
+            this.subTasks.push(this.generateMultiplicationOrDivisionSubTask());
+            break;
+          case 2:
+            this.subTasks.push(this.generateAdditionOrSubtractionSubTask(true));
+            break;
+          case 3:
+            this.subTasks.push(this.generateAdditionOrSubtractionSubTask());
+            break;
+          default:
+            break;
+        }
       }
     },
     // generates all possible sub-tasks for table level
-    generateTableSubTasks() {
+    generateTableSubTasks(isMultiplication) {
       const {
-        minResult,
-        maxResult,
-        minArg,
         maxArg,
+        minArg,
+        maxResult,
+        minResult,
       } = this.taskOptions.levels.items.table;
       const tasks = [];
       let leftArg = minArg;
@@ -609,9 +647,12 @@ export default {
       while (leftArg <= maxResult && leftArg * rightArg <= maxResult) {
         if (leftArg * rightArg >= minResult && leftArg <= rightArg && rightArg <= maxArg) {
           // multiplication table arguments
-          if (this.activeSection === 0) tasks.push([leftArg, rightArg]);
+          if (isMultiplication) {
+            tasks.push([leftArg, rightArg]);
           // division table arguments
-          if (this.activeSection === 1) tasks.push([leftArg * rightArg, leftArg]);
+          } else {
+            tasks.push([leftArg * rightArg, leftArg]);
+          }
         }
         rightArg += 1;
         if (rightArg > maxResult || leftArg * rightArg > maxResult) {
@@ -621,7 +662,7 @@ export default {
       }
       return this.shuffleArray(tasks);
     },
-    generateMultiplicationOrDivisionSubTask() {
+    generateMultiplicationOrDivisionSubTask(isMultiplication) {
       const level = this.getLevel();
       const {
         maxArg,
@@ -639,11 +680,11 @@ export default {
         rightArg = this.generateRandomNumber(minArg, maxArg);
       }
       // multiplication arguments
-      if (this.activeSection === 0) return [leftArg, rightArg];
+      if (isMultiplication) return [leftArg, rightArg];
       // division arguments
       return [leftArg * rightArg, leftArg];
     },
-    generateAdditionOrSubtractionSubTask() {
+    generateAdditionOrSubtractionSubTask(isAddition) {
       const level = this.getLevel();
       const {
         maxArg,
@@ -661,7 +702,7 @@ export default {
         rightArg = this.generateRandomNumber(minArg, maxArg);
       }
       // addition arguments
-      if (this.activeSection === 2) return [leftArg, rightArg];
+      if (isAddition) return [leftArg, rightArg];
       // subtraction arguments
       return [leftArg + rightArg, leftArg];
     },
