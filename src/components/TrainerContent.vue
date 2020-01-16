@@ -98,6 +98,7 @@
                 <v-col cols="10" offset="1">
                   <v-btn
                     @click="submitAnswer"
+                    :disabled="paused"
                     text
                   >
                     Submit
@@ -291,6 +292,7 @@ export default {
         },
         levels: {
           selected: 'Easy',
+          default: 'Easy',
           items: {
             table: {
               name: 'Table',
@@ -386,6 +388,7 @@ export default {
       },
       resultMessage: '',
       noSolvedTasksMessage: 'You have not solved any tasks',
+      solvedTasksMessages: ['Total tasks solved', 'Correct answers'],
     };
   },
 
@@ -501,8 +504,8 @@ export default {
         this.resultMessage = this.noSolvedTasksMessage;
       } else {
         const answersCorrectPercent = Math.round((correctAnswers / subTasksNum) * 100);
-        this.resultMessage = `Total tasks solved: ${subTasksNum}.
-        Correct answers: ${correctAnswers} (${answersCorrectPercent}%)`;
+        this.resultMessage = `${this.solvedTasksMessages[0]}: ${subTasksNum}.
+        ${this.solvedTasksMessages[1]}: ${correctAnswers} (${answersCorrectPercent}%)`;
       }
     },
     hideTaskOptions() {
@@ -678,7 +681,7 @@ export default {
       }
       return array;
     },
-    // https://stackoverflow.com/questions/2901102/how-to-print-a-number-with-commas-as-thousands-separators-in-javascript
+    // https://stackoverflow.com/a/2901298
     addCommas(num) {
       try {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -689,8 +692,16 @@ export default {
   },
 
   watch: {
+    // stop task if the time has ended
     timerPercent(val) {
       if (val === 100) this.stopTask();
+    },
+    // if table level was selected for multiplication/division,
+    // change it to default level on section change
+    activeSection() {
+      if (this.taskOptions.levels.selected.indexOf(this.tableLevelName) > -1) {
+        this.taskOptions.levels.selected = this.taskOptions.levels.default;
+      }
     },
   },
 };
@@ -700,7 +711,7 @@ export default {
   .options
     text-align center
   .task
-    font-size 25px
+    font-size 20px
     text-align center
   .counter
     font-size 12px
