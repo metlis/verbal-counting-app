@@ -333,23 +333,23 @@ export default {
       showTaskOptions: true,
       taskOptions: {
         tasksLimit: {
-          switchLabel: 'Set max number of tasks',
-          fieldLabel: 'Max number of tasks',
+          switchLabel: 'Установить максимальное количество заданий',
+          fieldLabel: 'Максимальное количество заданий',
           isSet: false,
           value: 10,
           rules: [
-            value => Number(value) >= 1 || 'Min number 1',
+            value => Number(value) >= 1 || 'Минимальное количество 1',
           ],
         },
         timer: {
-          switchLabel: 'Set time limit',
-          fieldLabel: 'Time in seconds',
+          switchLabel: 'Установить ограничение по времени',
+          fieldLabel: 'Время в секундах',
           isSet: false,
           initValue: 10,
           currentValue: 0,
           timerInstance: '',
           rules: [
-            value => Number(value) >= 10 || 'Min time is 10 seconds',
+            value => Number(value) >= 10 || 'Минимальное время 10 секунд',
           ],
           colors: {
             blue: 'light-blue',
@@ -358,12 +358,12 @@ export default {
           },
         },
         levels: {
-          label: 'Level',
-          selected: 'Easy',
-          default: 'Easy',
+          label: 'Уровень',
+          selected: 'Легкий',
+          default: 'Легкий',
           items: {
             table: {
-              name: 'Table',
+              name: 'Таблица',
               multiplicationOrDivision: {
                 maxResult: 100,
                 minResult: 1,
@@ -373,7 +373,7 @@ export default {
               additionOrSubtraction: {},
             },
             easy: {
-              name: 'Easy',
+              name: 'Легкий',
               multiplicationOrDivision: {
                 maxResult: 1000,
                 minResult: 100,
@@ -388,7 +388,7 @@ export default {
               },
             },
             intermediate: {
-              name: 'Intermediate',
+              name: 'Средний',
               multiplicationOrDivision: {
                 maxResult: 100000,
                 minResult: 1000,
@@ -403,7 +403,7 @@ export default {
               },
             },
             hard: {
-              name: 'Hard',
+              name: 'Сложный',
               multiplicationOrDivision: {
                 maxResult: 100000000,
                 minResult: 1000000,
@@ -418,7 +418,7 @@ export default {
               },
             },
             extraHard: {
-              name: 'Extra-hard',
+              name: 'Очень сложный',
               multiplicationOrDivision: {
                 maxResult: 1000000000000,
                 minResult: 100000000,
@@ -435,24 +435,24 @@ export default {
           },
         },
         showCorrectAnswers: {
-          label: 'Show correct answers on error',
+          label: 'Показывать правильный ответ при ошибке',
           value: false,
         },
         showTasksCount: {
-          label: 'Show a counter for tasks',
+          label: 'Показывать счетчик заданий',
           value: true,
         },
         showHints: {
-          label: 'Show hints',
+          label: 'Показывать подсказки',
           value: false,
         },
       },
       sections: {
-        Multiplication: '*',
-        Division: '/',
-        Addition: '+',
-        Subtraction: '-',
-        Combined: 'C',
+        Умножение: '*',
+        Деление: '/',
+        Сложение: '+',
+        Вычитание: '-',
+        Комбинированный: 'C',
       },
       subTasks: [],
       activeSubTaskContent: '',
@@ -465,26 +465,26 @@ export default {
         results: {},
       },
       taskResultMessage: '',
-      noSolvedTasksMessage: 'You have not solved any tasks',
-      solvedTasksMessages: ['Total tasks solved', 'Correct answers'],
-      appTitle: 'Verbal counting application',
-      taskOptionsHeader: 'Options',
-      tableLevelName: 'Table',
+      noSolvedTasksMessage: 'Вы не решили ни одного заданий',
+      solvedTasksMessages: ['Количество решенных заданий', 'Правильных ответов'],
+      appTitle: 'Тренажер устного счета',
+      taskOptionsHeader: 'Настройки',
+      tableLevelName: 'Таблица',
       chevronIcons: {
         up: 'mdi-chevron-up',
         down: 'mdi-chevron-down',
       },
       breakButtonTexts: {
-        pause: 'Pause',
-        continue: 'Continue',
+        pause: 'Пауза',
+        continue: 'Продолжить',
       },
       controlButtons: {
-        start: 'Start',
-        stop: 'Stop',
-        pause: 'Pause',
-        continue: 'Continue',
-        submit: 'Submit',
-        restart: 'Restart',
+        start: 'Старт',
+        stop: 'Стоп',
+        pause: 'Пауза',
+        continue: 'Продолжить',
+        submit: 'Ответить',
+        restart: 'Начать заново',
       },
     };
   },
