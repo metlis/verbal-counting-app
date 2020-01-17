@@ -2,8 +2,9 @@
   <v-container fluid>
     <v-row>
       <v-col
-        cols="8"
-        offset="2"
+        cols="12"
+        md="8"
+        offset-md="2"
       >
         <v-card>
           <v-card-title>
@@ -35,24 +36,27 @@
                   v-if="taskOptions.timer.isSet"
                   :value="timerPercent"
                   :color="timerColor"
+                  class="mb-5 mb-md-0"
                 />
               </v-row>
               <!-- Sub-task -->
               <v-row v-if="!visibleCorrectAnswer">
                 <!-- Left argument -->
                 <v-col
-                  cols="2"
-                  offset="2"
+                  cols="12"
+                  md="2"
+                  offset-md="2"
                   class="px-0"
                 >
-                  <div class="py-5">
+                  <div class="py-md-5">
                     {{ subTaskFirstArgument }}
                   </div>
                 </v-col>
                 <!-- Task sign -->
                 <v-col
-                  cols="1"
-                  class="py-8 px-0"
+                  cols="12"
+                  md="2"
+                  class="py-md-8 px-md-0"
                 >
                   <div>
                     {{ subTaskSign }}
@@ -60,17 +64,19 @@
                 </v-col>
                 <!-- Right argument -->
                 <v-col
-                  cols="2"
-                  class="px-0"
+                  cols="12"
+                  md="2"
+                  class="px-md-0"
                 >
-                  <div class="py-5">
+                  <div class="py-md-5">
                     {{ subTaskSecondArgument }}
                   </div>
                 </v-col>
                 <!-- Equals sign -->
                 <v-col
-                  cols="1"
-                  class="py-8 px-0"
+                  cols="12"
+                  md="1"
+                  class="py-md-8 px-md-0"
                 >
                   <div>
                     =
@@ -78,8 +84,9 @@
                 </v-col>
                 <!-- Result -->
                 <v-col
-                  cols="2"
-                  class="px-0"
+                  cols="12"
+                  md="2"
+                  class="px-md-0"
                 >
                   <!-- Answer input -->
                   <v-text-field
@@ -110,7 +117,7 @@
                 <v-col
                   cols="10"
                   offset="1"
-                  class="py-8"
+                  class="py-md-8"
                 >
                   <span class="correct-answer">
                     {{correctAnswerPrettified}}
@@ -133,14 +140,14 @@
                 <v-col
                   cols="10"
                   offset="1"
-                  class="py-8"
+                  class="py-md-8"
                 >
                   <v-chip
                     v-for="hint in answerHints"
                     @click="submitAnswerFromHints(hint)"
                     :key="hint"
                     :disabled="paused"
-                    class="mx-1 option"
+                    class="ma-1 option"
                   >
                     {{hint}}
                   </v-chip>
@@ -215,12 +222,18 @@
               borderless
             >
               <v-btn
-                v-for="section in sections"
+                v-for="(sign, section) in sections"
                 :key="section"
                 :disabled="started"
+                color="transparent"
                 small
               >
-                {{ section }}
+                <span class="d-none d-sm-none d-md-inline">
+                  {{ section }}
+                </span>
+                <span class="mobile-section-button d-md-none">
+                  {{sign}}
+                </span>
               </v-btn>
             </v-btn-toggle>
             <v-spacer />
@@ -320,7 +333,7 @@ export default {
       showTaskOptions: true,
       taskOptions: {
         tasksLimit: {
-          switchLabel: 'Max number of tasks',
+          switchLabel: 'Set max number of tasks',
           fieldLabel: 'Max number of tasks',
           isSet: false,
           value: 10,
@@ -329,7 +342,7 @@ export default {
           ],
         },
         timer: {
-          switchLabel: 'Limit the number of tasks',
+          switchLabel: 'Set time limit',
           fieldLabel: 'Time in seconds',
           isSet: false,
           initValue: 10,
@@ -434,7 +447,13 @@ export default {
           value: false,
         },
       },
-      sections: ['Multiplication', 'Division', 'Addition', 'Subtraction', 'Combined'],
+      sections: {
+        Multiplication: '*',
+        Division: '/',
+        Addition: '+',
+        Subtraction: '-',
+        Combined: 'C',
+      },
       subTasks: [],
       activeSubTaskContent: '',
       activeSection: 0,
@@ -448,7 +467,7 @@ export default {
       taskResultMessage: '',
       noSolvedTasksMessage: 'You have not solved any tasks',
       solvedTasksMessages: ['Total tasks solved', 'Correct answers'],
-      appTitle: 'Verbal counting trainer',
+      appTitle: 'Verbal counting application',
       taskOptionsHeader: 'Options',
       tableLevelName: 'Table',
       chevronIcons: {
@@ -524,7 +543,7 @@ export default {
           levelName === this.tableLevelName
           && this.activeSection <= 1
         ) {
-          const sectionName = this.sections[this.activeSection];
+          const sectionName = Object.keys(this.sections)[this.activeSection];
           names.push(`${sectionName} ${levelName}`);
         }
         // generate other levels
@@ -903,4 +922,6 @@ export default {
     color #EF9A9A
   .option
     cursor pointer
+  .mobile-section-button
+    font-size 16px
 </style>
