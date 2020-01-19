@@ -20,5 +20,6 @@ npm run build
 npm run lint
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+### Demos
+[English version](https://metlis.github.io/verbal-counting-app/)
+[Russian version](https://konspekteka.ru/trenazher-ustnogo-scheta/)
