@@ -1,5 +1,7 @@
 # multiplication-table-trainer
 
+A tool for practicing verbal counting
+
 ## Project setup
 ```
 npm install
